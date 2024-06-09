@@ -10,6 +10,7 @@ const rootRef = firebase.ref(database);
 
 app = express();
 var client = mqtt.connect(options);
+var client2 = mqtt.connect(options);
 
 client.on('connect', function () {
   console.log('Connected');
@@ -19,13 +20,30 @@ client.on('connect', function () {
   });
 });
 
-async function validator (message) {
+client2.on('connect', function () {
+  console.log('Connected');
+  client.subscribe('cobaAWS');
+  client.on('message', (topic, message) => {
+    validator(message)
+  });
+});
+
+function slice_data(message){
 
   message = message.toString()
   var data = []
   data = message.split('#')
   data.shift()
-  console.log(data)
+
+  return data;
+
+}
+
+async function validator (message) {
+
+  message = message.toString();
+  var data = [];
+  data = slice_data(message);
 
   // data[0] => nama iot
   // data[1] => long
@@ -119,6 +137,45 @@ function add_history(data){
           console.log('ga ada')
           
           firebase.set(firebase.ref(database, 'HISTORY/SOIL/'+data[0]), { 
+            data: newData 
+          });
+        }
+    })
+    .catch((error) => {
+      console.log(error)
+    });
+}
+
+function add_history_aws(data){
+  const newData = [ 
+    { 
+
+      Temp : data[1],
+      Humid : data[2],
+      Wind_speed : data[3],
+      Pressure : data[4],
+      Rain : data[5],
+      Intensity : data[6],
+      Wind_dir : data[7],
+      Wind_gust : data[8],
+      timestamp_alat: '',
+      timestamp_server: new Date,
+     } 
+  ]
+  firebase.get(firebase.ref(database,'HISTORY/WEATHER/'+data[0]))
+    .then((snapshot) => {
+        if (snapshot.exists()) {
+          const existingData = snapshot.val().data;
+
+          const updatedData = [...existingData, ...newData];
+          firebase.update(firebase.ref(database,'HISTORY/WEATHER/'+data[0]), { 
+            data: updatedData 
+          }
+          );
+        } else {
+          console.log('ga ada')
+          
+          firebase.set(firebase.ref(database, 'HISTORY/WEATHER/'+data[0]), { 
             data: newData 
           });
         }
