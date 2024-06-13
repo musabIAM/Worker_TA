@@ -10,55 +10,47 @@ const rootRef = firebase.ref(database);
 
 app = express();
 var client = mqtt.connect(options);
-var client2 = mqtt.connect(options);
 
 client.on('connect', function () {
   console.log('Connected');
   client.subscribe('esp8266_data');
   client.on('message', (topic, message) => {
-    validator(message)
-  });
-});
-
-client2.on('connect', function () {
-  console.log('Connected');
-  client.subscribe('cobaAWS');
-  client.on('message', (topic, message) => {
-    validator(message)
+    console.log(message.toString());
+    validator(message);
   });
 });
 
 function slice_data(message){
-
-  message = message.toString()
+  try {
+    message = message.toString()
   var data = []
   data = message.split('#')
   data.shift()
 
-  return data;
+  console.log(data);
 
+  return data;
+  } catch (error) {
+    return error;
+  }
+  
 }
 
 async function validator (message) {
-
   message = message.toString();
   var data = [];
   data = slice_data(message);
 
-  // data[0] => nama iot
-  // data[1] => long
-  // data[2] => lat 
-  // data[3] => N
-  // data[4] => P
-  // data[5] => K
-  // data[6] => PH
-  // data[7] => Moist
+  if(data[0]=="AWS"){
+    add_history_aws(data);
+  } else{
   const device = await check_device (data[0])
   if(!device){
     add_device(data)
     add_history(data)
   } else{
     add_history(data)
+  }
   }
 }
 
@@ -84,6 +76,7 @@ check_device = (id) => {
 }
 
 add_device = (data) => {
+
   return new Promise( async (resolve, reject) => {
       try {
         firebase.set(firebase.ref(database, 'SOIL/'+data[0]),{
@@ -106,9 +99,11 @@ add_device = (data) => {
           reject(error)
       }
   })
+
 }
 
 function add_history(data){
+
   console.log('masuk');
   const newData = [ 
     { 
@@ -117,7 +112,8 @@ function add_history(data){
       K: data[5], 
       PH: data[6], 
       mosit: data[7], 
-      timestamp_alat: '',
+      rssi: data[8],
+      timestamp_alat: data[9],
       timestamp_server: new Date,
      } 
   ]
@@ -144,12 +140,12 @@ function add_history(data){
     .catch((error) => {
       console.log(error)
     });
+
 }
 
 function add_history_aws(data){
   const newData = [ 
     { 
-
       Temp : data[1],
       Humid : data[2],
       Wind_speed : data[3],
@@ -158,7 +154,8 @@ function add_history_aws(data){
       Intensity : data[6],
       Wind_dir : data[7],
       Wind_gust : data[8],
-      timestamp_alat: '',
+      rssi: data[9],
+      timestamp_alat: data[10],
       timestamp_server: new Date,
      } 
   ]

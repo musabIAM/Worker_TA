@@ -22,7 +22,3 @@ function consume () {
         }
     })
 }
-
-module.exports = {
-    consume: consume
-}
