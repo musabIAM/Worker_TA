@@ -1,6 +1,7 @@
 const mqtt = require('mqtt')
 const options = require('./setup/Hivemq.js').options
 const express = require('express');
+const { reject } = require('lodash');
 
 const db = require('./setup/database.js').app
 const firebase = require('./setup/database.js').fb
@@ -49,9 +50,42 @@ async function validator (message) {
     add_device(data)
     add_history(data)
   } else{
+    const location = await check_location(data[0], data[1], data[2]) 
+    if (location) {
+      add_device(data)
+      console.log("Update")
+    } else {
+      console.log("Jangan Update")
+    } 
     add_history(data)
   }
   }
+}
+
+
+check_location = (id, lon, lat) => {
+  return new Promise( async (resolve, reject) => {
+    try {
+      firebase.get(firebase.ref(database,'SOIL/'+id)).then((snapshot) => {
+        var device = snapshot.val()
+        if(lon == "" && lat == "" ){
+          resolve(false);
+        }else{
+          if (device.lat != lat || device.long != lon){
+            resolve(true);
+          }else {
+            resolve(false);
+          }
+        }
+        
+      }).catch((error) => {
+        console.error("Error getting data:", error);
+      });
+    } catch (error) {
+        console.log(error)
+        reject(error)
+    }
+  })
 }
 
 check_device = (id) => {
@@ -85,12 +119,10 @@ add_device = (data) => {
           mac_address:'3C:71:BF:2A:D7:9E',
           jenis_iot : data[0]
       }).then(() => {
-          // Data saved successfully!
           console.log('Data saved successfully')
           resolve(true)
         })
         .catch((error) => {
-          // The write failed...
           console.log('The write failed')
           reject(error)
         });
@@ -181,4 +213,3 @@ function add_history_aws(data){
       console.log(error)
     });
 }
-
